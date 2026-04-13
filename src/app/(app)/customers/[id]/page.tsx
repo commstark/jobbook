@@ -54,9 +54,6 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const totalRevenue = invoices?.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total_amount), 0) || 0
   const amountOwing = invoices?.filter(i => ['sent', 'viewed'].includes(i.status)).reduce((s, i) => s + Number(i.total_amount), 0) || 0
 
-  const name = customer.name as string | null
-  const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?'
-
   return (
     <div style={{ paddingBottom: 100 }}>
       {/* Nav */}
@@ -67,38 +64,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         </Link>
       </div>
 
-      {/* Avatar + stats */}
+      {/* Stats */}
       <div style={{ padding: '0 var(--space-xl)', marginBottom: 'var(--space-lg)' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: 'var(--bg-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 600, fontSize: 22, color: 'var(--text-secondary)',
-            }}>
-              {initials}
-            </div>
-            {(customer.rating as string) && (customer.rating as string) !== 'neutral' && (
-              <div style={{
-                position: 'absolute', bottom: 2, right: 2,
-                width: 14, height: 14, borderRadius: '50%',
-                background: (customer.rating as string) === 'good' ? 'var(--accent-green)' : 'var(--accent-red)',
-                border: '2px solid var(--bg-primary)',
-              }} />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
-              Customer
-            </p>
-          </div>
-        </div>
-
-        {/* Stats */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 16,
+          gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden',
         }}>
           {[
             { label: 'Jobs', value: jobs?.length || 0 },
@@ -113,11 +83,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* Editable profile */}
+      {/* Editable profile — CustomerEditor owns the name/avatar/all fields */}
       <div style={{ padding: '0 var(--space-xl)', marginBottom: 'var(--space-2xl)' }}>
         <CustomerEditor
           customerId={customer.id as string}
-          initialName={name || ''}
+          initialName={customer.name as string || ''}
           initialAddress={customer.address as string || ''}
           initialPhone={primaryPhone?.phone || ''}
           initialRating={customer.rating as string || 'neutral'}
@@ -156,7 +126,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
                           </div>
                         </div>
                         {job.quoted_amount && (
-                          <span className="text-amount-inline" style={{ color: 'var(--accent-green)' }}>
+                          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-green)' }}>
                             ${Number(job.quoted_amount).toFixed(0)}
                           </span>
                         )}

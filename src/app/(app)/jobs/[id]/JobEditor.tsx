@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 const CATEGORIES = ['Leak', 'Install', 'Repair', 'Drain', 'New Construction', 'Inspection', 'Other']
-const STATUSES = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'paid', 'cancelled']
+const STATUSES = ['upcoming', 'scheduled', 'in_progress', 'done', 'invoiced', 'paid', 'cancelled']
 
 interface Job {
   id: string
@@ -23,7 +23,7 @@ interface Props {
   job: Job
   customer: { id: string; name: string } | null
   customers: { id: string; name: string }[]
-  visits: { id: string; scheduled_start: string; scheduled_end: string; notes: string }[]
+  visits: { id: string; scheduled_at: string; scheduled_end: string; notes: string }[]
   invoices: { id: string; status: string; total_amount: number }[]
 }
 
@@ -236,9 +236,9 @@ export default function JobEditor({ job, customer, customers, visits, invoices }
             {visits.map(v => (
               <div key={v.id} className="card" style={{ padding: '10px 14px' }}>
                 <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {new Date(v.scheduled_start).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  {new Date(v.scheduled_at).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
                   {' '}
-                  {new Date(v.scheduled_start).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  {new Date(v.scheduled_at).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true })}
                   {' – '}
                   {new Date(v.scheduled_end).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true })}
                 </p>

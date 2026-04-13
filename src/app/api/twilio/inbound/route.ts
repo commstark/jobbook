@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-// Twilio sends inbound SMS as form-encoded POST
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
@@ -43,7 +42,7 @@ export async function POST(req: Request) {
         .insert({
           phone: from,
           customer_id: phoneRow?.customer_id || null,
-          status: 'open',
+          status: 'active',
         })
         .select('id')
         .single()
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
       if (url) mediaUrls.push(url)
     }
 
-    // Insert message
+    // Insert message (no status column in messages table)
     const { error: msgError } = await supabase
       .from('messages')
       .insert({
@@ -76,27 +75,16 @@ export async function POST(req: Request) {
         direction: 'inbound',
         body: body || '',
         media_urls: mediaUrls.length > 0 ? mediaUrls : null,
-        status: 'received',
       })
 
     if (msgError) {
       console.error('[twilio/inbound] insert message:', msgError)
     }
 
-    // Update conversation: unread count + last_message_at
-    const { data: convData } = await supabase
-      .from('conversations')
-      .select('unread_count')
-      .eq('id', conversationId)
-      .single()
-
+    // Update conversation last_message_at
     await supabase
       .from('conversations')
-      .update({
-        unread_count: (convData?.unread_count || 0) + 1,
-        last_message_at: new Date().toISOString(),
-        status: 'open',
-      })
+      .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId)
 
     // Return empty TwiML — no auto-reply

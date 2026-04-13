@@ -14,7 +14,6 @@ interface Conversation {
   id: string
   phone: string
   status: string
-  is_unread: boolean
   last_message_at: string
   customer_id: string | null
   customers: { id: string; name: string; rating: string } | null
@@ -59,16 +58,12 @@ export default function ConversationList({ conversations }: { conversations: Rec
           ? `📷 Photo`
           : lastMsg?.body || ''
         const ini = initials(customer?.name || null)
-        const unread = conv.is_unread
-
         return (
           <Link key={conv.id} href={`/inbox/${conv.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
             <div style={{
               display: 'flex', gap: 12, alignItems: 'center',
               padding: '12px 0',
               borderBottom: '1px solid var(--border-light)',
-              borderLeft: unread ? '3px solid var(--accent-blue)' : '3px solid transparent',
-              paddingLeft: unread ? 10 : 0,
             }}>
               {/* Avatar */}
               <div style={{
@@ -84,7 +79,7 @@ export default function ConversationList({ conversations }: { conversations: Rec
               {/* Content */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-                  <p style={{ fontWeight: unread ? 700 : 500, fontSize: 15, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontWeight: 500, fontSize: 15, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {name}
                   </p>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 8 }}>
@@ -92,9 +87,8 @@ export default function ConversationList({ conversations }: { conversations: Rec
                   </span>
                 </div>
                 <p style={{
-                  fontSize: 13, color: unread ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontSize: 13, color: 'var(--text-secondary)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  fontWeight: unread ? 500 : 400,
                 }}>
                   {preview || <span style={{ color: 'var(--text-muted)' }}>No messages yet</span>}
                 </p>

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       .insert({
         customer_id: customer_id || null,
         phone: resolvedPhone,
-        status: 'open',
+        status: 'active',
       })
       .select('id')
       .single()

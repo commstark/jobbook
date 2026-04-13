@@ -23,16 +23,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
 
-    // Insert message record
+    // Insert message record (no status column in schema)
     const { data: message, error: msgError } = await supabase
       .from('messages')
       .insert({
         conversation_id: id,
         direction: 'outbound',
         body: messageBody.trim(),
-        status: 'queued',
       })
-      .select('id, body, direction, status, created_at')
+      .select('id, body, direction, created_at')
       .single()
 
     if (msgError) {
@@ -41,6 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Send via Twilio (best effort — don't fail if Twilio errors)
+    let twilioSid: string | null = null
     try {
       const accountSid = process.env.TWILIO_ACCOUNT_SID
       const authToken = process.env.TWILIO_AUTH_TOKEN
@@ -65,16 +65,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         if (twilioRes.ok) {
           const twilioData = await twilioRes.json()
+          twilioSid = twilioData.sid
           await supabase
             .from('messages')
-            .update({ status: 'sent', twilio_sid: twilioData.sid })
+            .update({ twilio_sid: twilioSid })
             .eq('id', message.id)
-          message.status = 'sent'
         } else {
           const errText = await twilioRes.text()
           console.error('[POST /api/conversations/:id/messages] twilio:', errText)
-          await supabase.from('messages').update({ status: 'failed' }).eq('id', message.id)
-          message.status = 'failed'
         }
       }
     } catch (twilioErr) {
@@ -84,7 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Update conversation last_message_at
     await supabase
       .from('conversations')
-      .update({ last_message_at: new Date().toISOString(), status: 'open' })
+      .update({ last_message_at: new Date().toISOString() })
       .eq('id', id)
 
     return NextResponse.json({ message })

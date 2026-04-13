@@ -48,10 +48,10 @@ export default function MessageThread({ conversationId, initialMessages, custome
     setMessages((prev) => [...prev, optimistic])
 
     try {
-      const res = await fetch('/api/messages/send', {
+      const res = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId, body }),
+        body: JSON.stringify({ body }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Send failed')

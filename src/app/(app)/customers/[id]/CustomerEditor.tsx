@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Phone, ThumbsUp, ThumbsDown, Pencil, Check, X } from 'lucide-react'
 
@@ -25,6 +25,7 @@ export default function CustomerEditor({
 }: Props) {
   const router = useRouter()
 
+  // All fields are live state — edits apply immediately, saves happen on blur/check
   const [name, setName] = useState(initialName)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(initialName)
@@ -33,6 +34,7 @@ export default function CustomerEditor({
   const [editingAddress, setEditingAddress] = useState(false)
   const [addressInput, setAddressInput] = useState(initialAddress)
 
+  // phone is kept in state so Text button always has the current value
   const [phone, setPhone] = useState(initialPhone)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneInput, setPhoneInput] = useState(initialPhone)
@@ -42,11 +44,17 @@ export default function CustomerEditor({
   const [notes, setNotes] = useState(initialNotes)
 
   const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [textLoading, setTextLoading] = useState(false)
+
+  // Track the last-saved values to avoid redundant saves
+  const savedRatingNote = useRef(initialRatingNote)
+  const savedNotes = useRef(initialNotes)
+
+  const initials = name
+    ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : '?'
 
   async function patch(body: Record<string, unknown>) {
-    setSaving(true)
-    setError('')
     try {
       const res = await fetch(`/api/customers/${customerId}`, {
         method: 'PUT',
@@ -54,20 +62,27 @@ export default function CustomerEditor({
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Save failed')
-      router.refresh()
+      if (!res.ok) {
+        setError(data.error || 'Save failed')
+      } else {
+        setError('')
+        router.refresh()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
-    } finally {
-      setSaving(false)
     }
   }
 
   async function saveName() {
     setEditingName(false)
     if (nameInput === name) return
-    setName(nameInput)
+    setName(nameInput)  // update UI immediately
     await patch({ name: nameInput })
+  }
+
+  function cancelName() {
+    setEditingName(false)
+    setNameInput(name)
   }
 
   async function saveAddress() {
@@ -77,11 +92,21 @@ export default function CustomerEditor({
     await patch({ address: addressInput })
   }
 
+  function cancelAddress() {
+    setEditingAddress(false)
+    setAddressInput(address)
+  }
+
   async function savePhone() {
     setEditingPhone(false)
     if (phoneInput === phone) return
-    setPhone(phoneInput)
+    setPhone(phoneInput)  // update immediately so Text button works right away
     await patch({ phone: phoneInput })
+  }
+
+  function cancelPhone() {
+    setEditingPhone(false)
+    setPhoneInput(phone)
   }
 
   async function saveRating(newRating: string) {
@@ -91,7 +116,11 @@ export default function CustomerEditor({
   }
 
   async function handleText() {
-    setSaving(true)
+    if (!phone) {
+      setError('Add a phone number first')
+      return
+    }
+    setTextLoading(true)
     setError('')
     try {
       const res = await fetch('/api/conversations/find-or-create', {
@@ -104,41 +133,79 @@ export default function CustomerEditor({
       router.push(`/inbox/${data.conversation.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed')
-      setSaving(false)
+      setTextLoading(false)
     }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-      {/* Name */}
-      <div>
-        {editingName ? (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              autoFocus
-              className="input"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameInput(name) } }}
-              style={{ flex: 1, fontSize: 20, fontWeight: 700 }}
-            />
-            <button onClick={saveName} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4 }}>
-              <Check size={20} strokeWidth={2} />
-            </button>
-            <button onClick={() => { setEditingName(false); setNameInput(name) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-              <X size={20} strokeWidth={2} />
-            </button>
+
+      {/* Avatar + Name — this IS the page title. One element, not two. */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        {/* Avatar (initials) */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'var(--bg-secondary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 600, fontSize: 22, color: 'var(--text-secondary)',
+          }}>
+            {initials}
           </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              {name || 'Unknown Customer'}
-            </h1>
-            <button onClick={() => { setEditingName(true); setNameInput(name) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, marginTop: 2 }}>
-              <Pencil size={15} strokeWidth={1.8} />
+          {rating && rating !== 'neutral' && (
+            <div style={{
+              position: 'absolute', bottom: 2, right: 2,
+              width: 14, height: 14, borderRadius: '50%',
+              background: rating === 'good' ? 'var(--accent-green)' : 'var(--accent-red)',
+              border: '2px solid var(--bg-primary)',
+            }} />
+          )}
+        </div>
+
+        {/* Name — the page title, editable inline */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {editingName ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                autoFocus
+                className="input"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName()
+                  if (e.key === 'Escape') cancelName()
+                }}
+                onBlur={saveName}
+                style={{ fontSize: 20, fontWeight: 700, flex: 1 }}
+              />
+              <button
+                onMouseDown={(e) => { e.preventDefault(); saveName() }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4 }}
+              >
+                <Check size={20} strokeWidth={2} />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); cancelName() }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
+              >
+                <X size={20} strokeWidth={2} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setEditingName(true); setNameInput(name) }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+              }}
+            >
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                {name || 'Add Name'}
+              </h1>
+              <Pencil size={15} strokeWidth={1.8} color="var(--text-muted)" style={{ flexShrink: 0 }} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Phone */}
@@ -152,61 +219,74 @@ export default function CustomerEditor({
               className="input"
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') savePhone(); if (e.key === 'Escape') { setEditingPhone(false); setPhoneInput(phone) } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') savePhone()
+                if (e.key === 'Escape') cancelPhone()
+              }}
+              onBlur={savePhone}
               style={{ flex: 1 }}
             />
-            <button onClick={savePhone} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4 }}>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); savePhone() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4 }}
+            >
               <Check size={20} strokeWidth={2} />
             </button>
-            <button onClick={() => { setEditingPhone(false); setPhoneInput(phone) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); cancelPhone() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
+            >
               <X size={20} strokeWidth={2} />
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => { setEditingPhone(true); setPhoneInput(phone) }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+            }}
+          >
             <span style={{ fontSize: 15, color: phone ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-              {phone || 'No phone'}
+              {phone || 'Add phone number'}
             </span>
-            <button onClick={() => { setEditingPhone(true); setPhoneInput(phone) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-              <Pencil size={13} strokeWidth={1.8} />
-            </button>
-          </div>
+            <Pencil size={13} strokeWidth={1.8} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+          </button>
         )}
       </div>
 
-      {/* Action buttons */}
-      {phone && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <a
-            href={`tel:${phone}`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)', fontSize: 14, fontWeight: 500,
-              textDecoration: 'none',
-            }}
-          >
-            <Phone size={15} strokeWidth={1.8} />
-            Call
-          </a>
-          <button
-            onClick={handleText}
-            disabled={saving}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)', fontSize: 14, fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            Text
-          </button>
-        </div>
-      )}
+      {/* Call + Text — uses current phone state, so works immediately after saving */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <a
+          href={phone ? `tel:${phone}` : undefined}
+          onClick={!phone ? (e) => { e.preventDefault(); setError('Add a phone number first') } : undefined}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)', fontSize: 14, fontWeight: 500,
+            textDecoration: 'none', cursor: 'pointer',
+          }}
+        >
+          <Phone size={15} strokeWidth={1.8} />
+          Call
+        </a>
+        <button
+          onClick={handleText}
+          disabled={textLoading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)', fontSize: 14, fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          {textLoading ? 'Opening...' : 'Text'}
+        </button>
+      </div>
 
       {/* Address */}
       <div>
@@ -220,24 +300,38 @@ export default function CustomerEditor({
               onChange={(e) => setAddressInput(e.target.value)}
               rows={2}
               style={{ flex: 1, resize: 'none' }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveAddress() } if (e.key === 'Escape') { setEditingAddress(false); setAddressInput(address) } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveAddress() }
+                if (e.key === 'Escape') cancelAddress()
+              }}
+              onBlur={saveAddress}
             />
-            <button onClick={saveAddress} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4, marginTop: 4 }}>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); saveAddress() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green)', padding: 4, marginTop: 4 }}
+            >
               <Check size={20} strokeWidth={2} />
             </button>
-            <button onClick={() => { setEditingAddress(false); setAddressInput(address) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, marginTop: 4 }}>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); cancelAddress() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, marginTop: 4 }}
+            >
               <X size={20} strokeWidth={2} />
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <button
+            onClick={() => { setEditingAddress(true); setAddressInput(address) }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
+            }}
+          >
             <span style={{ fontSize: 15, color: address ? 'var(--text-primary)' : 'var(--text-muted)', lineHeight: 1.4, flex: 1 }}>
-              {address || 'No address'}
+              {address || 'Add address'}
             </span>
-            <button onClick={() => { setEditingAddress(true); setAddressInput(address) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}>
-              <Pencil size={13} strokeWidth={1.8} />
-            </button>
-          </div>
+            <Pencil size={13} strokeWidth={1.8} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+          </button>
         )}
       </div>
 
@@ -274,28 +368,38 @@ export default function CustomerEditor({
         </div>
       </div>
 
-      {/* Rating note */}
+      {/* Rating note — auto-saves on blur */}
       <div>
         <span className="text-section-header" style={{ display: 'block', marginBottom: 6 }}>Rating Note</span>
         <textarea
           className="input"
           value={ratingNote}
           onChange={(e) => setRatingNote(e.target.value)}
-          onBlur={() => { if (ratingNote !== initialRatingNote) patch({ rating_note: ratingNote }) }}
+          onBlur={() => {
+            if (ratingNote !== savedRatingNote.current) {
+              savedRatingNote.current = ratingNote
+              patch({ rating_note: ratingNote })
+            }
+          }}
           rows={2}
           placeholder="Reason for rating..."
           style={{ resize: 'none' }}
         />
       </div>
 
-      {/* Property notes */}
+      {/* Property notes — auto-saves on blur */}
       <div>
         <span className="text-section-header" style={{ display: 'block', marginBottom: 6 }}>Property Notes</span>
         <textarea
           className="input"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => { if (notes !== initialNotes) patch({ notes }) }}
+          onBlur={() => {
+            if (notes !== savedNotes.current) {
+              savedNotes.current = notes
+              patch({ notes })
+            }
+          }}
           rows={4}
           placeholder="Notes about the property, access codes, parking..."
           style={{ resize: 'none' }}

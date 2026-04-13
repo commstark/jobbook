@@ -18,7 +18,7 @@ export default async function InboxPage() {
       supabase
         .from('conversations')
         .select(`
-          id, phone, status, is_unread, last_message_at, customer_id,
+          id, phone, status, last_message_at, customer_id,
           customers ( id, name, rating ),
           messages ( id, body, direction, created_at, media_urls )
         `)

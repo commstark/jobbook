@@ -22,7 +22,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           id, title, description, status, category, is_urgent, quoted_amount, ai_summary, created_at,
           customer_id,
           customers ( id, name ),
-          job_visits ( id, scheduled_start, scheduled_end, notes ),
+          job_visits ( id, scheduled_at, scheduled_end, notes ),
           invoices ( id, status, total_amount )
         `)
         .eq('id', id)
@@ -59,7 +59,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   }
 
   const customer = job.customers as { id: string; name: string } | null
-  const visits = job.job_visits as { id: string; scheduled_start: string; scheduled_end: string; notes: string }[]
+  const visits = job.job_visits as { id: string; scheduled_at: string; scheduled_end: string; notes: string }[]
   const invoices = job.invoices as { id: string; status: string; total_amount: number }[]
 
   return (
@@ -87,7 +87,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           }}
           customer={customer}
           customers={customers}
-          visits={visits || []}
+          visits={(visits || []) as { id: string; scheduled_at: string; scheduled_end: string; notes: string }[]}
           invoices={invoices || []}
         />
       </div>

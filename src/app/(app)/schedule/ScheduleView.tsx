@@ -131,7 +131,7 @@ export default function ScheduleView({ visits, selectedDate }: Props) {
         throw new Error(jobData.error || 'Job creation failed')
       }
 
-      const visitRes = await fetch('/api/job-visits/create', {
+      const visitRes = await fetch('/api/schedule/visits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_id: jobData.job.id, scheduled_at: scheduledAt, scheduled_end: scheduledEnd }),

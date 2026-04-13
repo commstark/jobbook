@@ -33,9 +33,6 @@ export default async function ConversationPage({
     } else {
       conversation = conv
 
-      // Mark as read
-      await supabase.from('conversations').update({ is_unread: false }).eq('id', id)
-
       const { data: msgs, error: msgsError } = await supabase
         .from('messages')
         .select('id, conversation_id, direction, body, media_urls, created_at')

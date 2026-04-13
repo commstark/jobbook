@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         customer_id: customer_id || null,
         quoted_amount: quoted_amount || null,
         ai_summary: ai_summary || null,
-        status: 'pending',
+        status: 'upcoming',
       })
       .select('id')
       .single()
