@@ -2,9 +2,10 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import BackButton from '@/components/BackButton'
 import CustomerEditor from './CustomerEditor'
+import { computeJobStatus, jobStatusColor, jobStatusLabel } from '@/lib/jobStatus'
 
 export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,7 +20,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
       .select(`
         id, name, address, rating, rating_note, notes,
         customer_phones ( id, phone, label, is_primary ),
-        jobs ( id, title, status, is_urgent, quoted_amount, created_at ),
+        jobs ( id, title, status, is_urgent, quoted_amount, created_at, invoices ( id, status ) ),
         invoices ( id, status, total_amount )
       `)
       .eq('id', id)
@@ -49,7 +50,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const phones = customer.customer_phones as { id: string; phone: string; label: string | null; is_primary: boolean }[]
   const primaryPhone = phones?.find(p => p.is_primary) || phones?.[0]
   const invoices = customer.invoices as { id: string; status: string; total_amount: number }[]
-  const jobs = customer.jobs as { id: string; title: string; status: string; is_urgent: boolean; quoted_amount: number | null; created_at: string }[]
+  const jobs = customer.jobs as { id: string; title: string; status: string; is_urgent: boolean; quoted_amount: number | null; created_at: string; invoices: { id: string; status: string }[] }[]
 
   const totalRevenue = invoices?.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total_amount), 0) || 0
   const amountOwing = invoices?.filter(i => ['sent', 'viewed'].includes(i.status)).reduce((s, i) => s + Number(i.total_amount), 0) || 0
@@ -58,10 +59,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
     <div style={{ paddingBottom: 100 }}>
       {/* Nav */}
       <div style={{ padding: '0 var(--space-xl)', paddingTop: 'calc(12px + env(safe-area-inset-top))', marginBottom: 'var(--space-lg)' }}>
-        <Link href="/customers" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-          <ChevronLeft size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 16 }}>Customers</span>
-        </Link>
+        <BackButton fallback="/customers" label="Customers" />
       </div>
 
       {/* Stats */}
@@ -106,10 +104,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             {jobs
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
               .map(job => {
-                const statusColor = job.status === 'paid' ? 'var(--accent-green)' : job.status === 'invoiced' ? 'var(--accent-blue)' : job.is_urgent ? 'var(--accent-red)' : 'var(--border)'
+                const cs = computeJobStatus(job.status, job.invoices || [])
+                const color = jobStatusColor(cs)
                 return (
                   <Link key={job.id} href={`/jobs/${job.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div className="card" style={{ borderLeft: `3px solid ${statusColor}` }}>
+                    <div className="card" style={{ borderLeft: `3px solid ${color}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                           <p className="text-card-title" style={{ marginBottom: 4 }}>{job.title}</p>
@@ -118,10 +117,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
                               {new Date(job.created_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                             <span className="badge" style={{
-                              background: job.status === 'paid' ? 'rgba(22,163,74,0.1)' : job.status === 'invoiced' ? 'rgba(37,99,235,0.1)' : 'rgba(158,158,158,0.1)',
-                              color: job.status === 'paid' ? 'var(--accent-green)' : job.status === 'invoiced' ? 'var(--accent-blue)' : 'var(--text-muted)',
+                              background: `${color}18`,
+                              color,
+                              textTransform: 'capitalize',
                             }}>
-                              {job.status}
+                              {jobStatusLabel(cs)}
                             </span>
                           </div>
                         </div>

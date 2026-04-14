@@ -36,7 +36,8 @@ export default async function SchedulePage({
           is_urgent,
           quoted_amount,
           category,
-          customers ( id, name )
+          customers ( id, name ),
+          invoices ( status )
         )
       `)
       .gte('scheduled_at', startOfDay)

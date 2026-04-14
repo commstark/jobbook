@@ -2,8 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import BackButton from '@/components/BackButton'
 import InvoiceEditor from './InvoiceEditor'
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,13 +53,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div style={{ paddingBottom: 100 }}>
       <div style={{ padding: '0 var(--space-xl)', paddingTop: 'calc(12px + env(safe-area-inset-top))', marginBottom: 'var(--space-lg)' }}>
-        <Link
-          href={job ? `/jobs/${job.id}` : '/schedule'}
-          style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}
-        >
-          <ChevronLeft size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 16 }}>{job ? 'Job' : 'Schedule'}</span>
-        </Link>
+        <BackButton fallback={job ? `/jobs/${job.id}` : '/schedule'} label="Back" />
       </div>
 
       <div style={{ padding: '0 var(--space-xl)' }}>

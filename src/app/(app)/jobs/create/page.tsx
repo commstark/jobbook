@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import BackButton from '@/components/BackButton'
 import CreateJobForm from './CreateJobForm'
 
 export default async function CreateJobPage({ searchParams }: { searchParams: Promise<{ date?: string; hour?: string; customer_id?: string; customer_name?: string }> }) {
@@ -23,10 +22,7 @@ export default async function CreateJobPage({ searchParams }: { searchParams: Pr
   return (
     <div style={{ paddingBottom: 100 }}>
       <div style={{ padding: '0 var(--space-xl)', paddingTop: 'calc(12px + env(safe-area-inset-top))', marginBottom: 'var(--space-lg)' }}>
-        <Link href="/schedule" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-          <ChevronLeft size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 16 }}>Schedule</span>
-        </Link>
+        <BackButton fallback="/schedule" label="Schedule" />
       </div>
 
       <div style={{ padding: '0 var(--space-xl)' }}>

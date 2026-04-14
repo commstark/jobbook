@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Phone } from 'lucide-react'
+import { Phone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import BackButton from '@/components/BackButton'
 import MessageThread from './MessageThread'
 
 export default async function ConversationPage({
@@ -77,9 +78,7 @@ export default async function ConversationPage({
         background: 'var(--bg-primary)',
         flexShrink: 0,
       }}>
-        <Link href="/inbox" style={{ color: 'var(--accent-blue)' }}>
-          <ChevronLeft size={24} strokeWidth={1.8} />
-        </Link>
+        <BackButton fallback="/inbox" label="" />
         <div style={{ flex: 1, minWidth: 0 }}>
           <Link href={customer ? `/customers/${customer.id}` : '#'} style={{ textDecoration: 'none' }}>
             <p style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

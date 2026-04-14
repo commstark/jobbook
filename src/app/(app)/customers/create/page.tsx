@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import BackButton from '@/components/BackButton'
 
 export default function CreateCustomerPage() {
   const router = useRouter()
@@ -39,10 +38,7 @@ export default function CreateCustomerPage() {
   return (
     <div style={{ paddingBottom: 100 }}>
       <div style={{ padding: '0 var(--space-xl)', paddingTop: 'calc(12px + env(safe-area-inset-top))', marginBottom: 'var(--space-lg)' }}>
-        <Link href="/customers" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
-          <ChevronLeft size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 16 }}>Customers</span>
-        </Link>
+        <BackButton fallback="/customers" label="Customers" />
       </div>
 
       <div style={{ padding: '0 var(--space-xl)' }}>
