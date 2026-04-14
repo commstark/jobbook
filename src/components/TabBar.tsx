@@ -39,7 +39,7 @@ export default function TabBar() {
           return (
             <Link key={href} href={href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, textDecoration: 'none' }}>
               <div style={{
-                width: 48, height: 48, borderRadius: 48,
+                width: 44, height: 44, borderRadius: 44,
                 background: 'var(--accent-action)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginTop: -16,

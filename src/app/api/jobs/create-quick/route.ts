@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { sendPushToAll } from '@/lib/sendPush'
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +30,15 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[POST /api/jobs/create-quick]', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Send push notification for urgent jobs
+    if (is_urgent && job) {
+      sendPushToAll({
+        title: '🚨 Urgent Job',
+        body: title,
+        url: `/jobs/${job.id}`,
+      }).catch((e) => console.error('[create-quick] push failed:', e))
     }
 
     return NextResponse.json({ job })

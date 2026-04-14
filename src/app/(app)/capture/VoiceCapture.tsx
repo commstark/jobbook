@@ -73,14 +73,25 @@ export default function VoiceCapture({ users, customers }: Props) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      // Pick best supported MIME type (iOS Safari doesn't support audio/webm)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : ''
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
       recorderRef.current = recorder
       chunksRef.current = []
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data)
       recorder.start()
       setState('recording')
     } catch (err) {
-      setError('Microphone access denied. Please allow microphone access.')
+      const msg = err instanceof Error ? err.message : 'Microphone access denied'
+      setError(msg.includes('Permission') || msg.includes('denied') || msg.includes('NotAllowed')
+        ? 'Microphone access denied. Please allow microphone access.'
+        : msg)
       console.error('[capture] start:', err)
     }
   }

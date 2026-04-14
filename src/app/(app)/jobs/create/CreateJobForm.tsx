@@ -9,9 +9,17 @@ interface Props {
   customers: { id: string; name: string }[]
   prefilledCustomerId?: string
   prefilledCustomerName?: string
+  prefilledDate?: string
+  prefilledHour?: number
 }
 
-export default function CreateJobForm({ customers, prefilledCustomerId = '', prefilledCustomerName = '' }: Props) {
+export default function CreateJobForm({
+  customers,
+  prefilledCustomerId = '',
+  prefilledCustomerName = '',
+  prefilledDate = '',
+  prefilledHour,
+}: Props) {
   const router = useRouter()
 
   const [title, setTitle] = useState('')
@@ -20,7 +28,18 @@ export default function CreateJobForm({ customers, prefilledCustomerId = '', pre
   const [isUrgent, setIsUrgent] = useState(false)
   const [customerId, setCustomerId] = useState(prefilledCustomerId)
   const [customerSearch, setCustomerSearch] = useState(prefilledCustomerName)
-  const [quotedAmount, setQuotedAmount] = useState('')
+  const [showCustomerList, setShowCustomerList] = useState(false)
+
+  // Time scheduling
+  const defaultStartHour = prefilledHour ?? 9
+  const [startTime, setStartTime] = useState(
+    `${String(defaultStartHour).padStart(2, '0')}:00`
+  )
+  const [endTime, setEndTime] = useState(
+    `${String(defaultStartHour + 1).padStart(2, '0')}:00`
+  )
+  const [scheduleDate, setScheduleDate] = useState(prefilledDate)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -46,12 +65,32 @@ export default function CreateJobForm({ customers, prefilledCustomerId = '', pre
           category,
           is_urgent: isUrgent,
           customer_id: customerId || null,
-          quoted_amount: quotedAmount ? parseFloat(quotedAmount) : null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create job')
-      router.push(`/jobs/${data.job.id}`)
+
+      const jobId = data.job.id
+
+      // Create visit if a date is set
+      if (scheduleDate) {
+        const visitRes = await fetch('/api/schedule/visits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_id: jobId,
+            scheduled_at: `${scheduleDate}T${startTime}:00`,
+            scheduled_end: `${scheduleDate}T${endTime}:00`,
+          }),
+        })
+        if (!visitRes.ok) {
+          const visitData = await visitRes.json()
+          console.error('[CreateJobForm] visit creation failed:', visitData.error)
+          // Still navigate — job was created
+        }
+      }
+
+      router.push(`/jobs/${jobId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create job')
       setSaving(false)
@@ -110,16 +149,17 @@ export default function CreateJobForm({ customers, prefilledCustomerId = '', pre
           className="input"
           placeholder="Search customers..."
           value={customerSearch}
-          onChange={(e) => { setCustomerSearch(e.target.value); if (customerId) setCustomerId('') }}
+          onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerList(true); if (customerId) setCustomerId('') }}
+          onFocus={() => setShowCustomerList(true)}
           style={{ marginBottom: 6 }}
         />
-        {customerSearch && !customerId && filteredCustomers.length > 0 && (
+        {showCustomerList && customerSearch && !customerId && filteredCustomers.length > 0 && (
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, overflow: 'hidden' }}>
             {filteredCustomers.slice(0, 5).map(c => (
               <button
                 key={c.id}
                 type="button"
-                onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name) }}
+                onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerList(false) }}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
                   padding: '10px 14px', border: 'none', background: 'transparent',
@@ -133,16 +173,38 @@ export default function CreateJobForm({ customers, prefilledCustomerId = '', pre
         )}
       </div>
 
+      {/* Schedule */}
       <div>
-        <span className="text-section-header" style={{ display: 'block', marginBottom: 6 }}>Quoted Amount ($)</span>
+        <span className="text-section-header" style={{ display: 'block', marginBottom: 6 }}>Schedule (optional)</span>
         <input
-          type="number"
+          type="date"
           className="input"
-          value={quotedAmount}
-          onChange={(e) => setQuotedAmount(e.target.value)}
-          onFocus={(e) => e.target.select()}
-          placeholder="0.00"
+          value={scheduleDate}
+          onChange={(e) => setScheduleDate(e.target.value)}
+          style={{ marginBottom: 8 }}
         />
+        {scheduleDate && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Start</span>
+              <input
+                type="time"
+                className="input"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>End</span>
+              <input
+                type="time"
+                className="input"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div>

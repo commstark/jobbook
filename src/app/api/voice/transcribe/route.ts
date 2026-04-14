@@ -27,9 +27,11 @@ export async function POST(req: Request) {
     })
 
     if (!whisperRes.ok) {
-      const err = await whisperRes.text()
-      console.error('[POST /api/voice/transcribe] whisper:', err)
-      return NextResponse.json({ error: 'Transcription failed' }, { status: 500 })
+      const errText = await whisperRes.text()
+      console.error('[POST /api/voice/transcribe] whisper error:', errText)
+      let detail = errText
+      try { const j = JSON.parse(errText); detail = j.error?.message || j.message || errText } catch { /* ignore */ }
+      return NextResponse.json({ error: `Whisper: ${detail}` }, { status: 500 })
     }
 
     const whisperData = await whisperRes.json()
@@ -76,7 +78,8 @@ JSON:`,
 
     return NextResponse.json({ transcript, data })
   } catch (err) {
-    console.error('[POST /api/voice/transcribe] unexpected:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[POST /api/voice/transcribe] unexpected:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
